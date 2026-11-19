@@ -1,0 +1,39 @@
+# Paso 4 — Ejecuta el agente en la nube de GitHub.
+# Por ahora SOLO manualmente (botón "Run workflow" en la pestaña Actions)
+# para validar los datos reales antes de activar el horario y el WhatsApp.
+name: Previsão de surf
+
+on:
+  workflow_dispatch:        # ejecución manual desde la web
+  # schedule:               # se activa en el paso 3 (cron en UTC: 08:00 UTC = 05h Bahia)
+  #   - cron: "0 23 * * *"
+
+# Mínimo privilegio: este workflow solo necesita LEER el repo.
+permissions:
+  contents: read
+
+jobs:
+  previsao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5      # si algo se cuelga, no gasta tus minutos gratis
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip          # reaprovecha dependencias entre ejecuciones
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      # Primero la lógica con datos simulados: si esto falla,
+      # el problema es el código, no la API.
+      - name: Testes com dados simulados
+        run: python teste_simulado.py
+
+      - name: Previsão real (Open-Meteo)
+        run: python main.py
