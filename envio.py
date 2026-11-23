@@ -23,7 +23,15 @@ def enviar(texto, modo_teste=False):
     telefone = os.environ.get("WHATSAPP_PHONE")
 
     if modo_teste or not apikey or not telefone:
-        print("📝 MODO TESTE — mensagem NÃO enviada:")
+        # Decimos el MOTIVO (sin mostrar valores): si no, "falta el secret" y
+        # "marcaste teste" se ven iguales en el log.
+        if modo_teste:
+            motivo = "opção --teste ativada"
+        else:
+            faltando = [n for n, v in [("CALLMEBOT_APIKEY", apikey),
+                                       ("WHATSAPP_PHONE", telefone)] if not v]
+            motivo = "secret não configurado: " + ", ".join(faltando)
+        print(f"📝 MODO TESTE ({motivo}) — mensagem NÃO enviada:")
         print(texto)
         print("-" * 40)
         return False
