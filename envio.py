@@ -3,7 +3,7 @@ Envío de mensajes. Todo el "canal" (CallMeBot hoy, Meta/Telegram mañana)
 vive acá: para cambiar de canal se toca SOLO este archivo.
 
 Credenciales: vienen de variables de entorno (GitHub Secrets), nunca del código.
-Sin credenciales → MODO TESTE: el mensaje se imprime en vez de enviarse.
+Con --teste el mensaje se imprime en vez de enviarse; sin credenciales, falla.
 """
 import os
 import time
@@ -22,19 +22,20 @@ def enviar(texto, modo_teste=False):
     apikey = os.environ.get("CALLMEBOT_APIKEY")
     telefone = os.environ.get("WHATSAPP_PHONE")
 
-    if modo_teste or not apikey or not telefone:
-        # Decimos el MOTIVO (sin mostrar valores): si no, "falta el secret" y
-        # "marcaste teste" se ven iguales en el log.
-        if modo_teste:
-            motivo = "opção --teste ativada"
-        else:
-            faltando = [n for n, v in [("CALLMEBOT_APIKEY", apikey),
-                                       ("WHATSAPP_PHONE", telefone)] if not v]
-            motivo = "secret não configurado: " + ", ".join(faltando)
-        print(f"📝 MODO TESTE ({motivo}) — mensagem NÃO enviada:")
+    if modo_teste:
+        print("📝 MODO TESTE — mensagem NÃO enviada:")
         print(texto)
         print("-" * 40)
         return False
+
+    # Sin secrets y sin --teste: FALLAR en vez de simular en silencio.
+    # Si no, el workflow sale "✅ Éxito", guarda el estado como si hubiera
+    # enviado y vos nunca te enterás de que no llegó nada.
+    faltando = [n for n, v in [("CALLMEBOT_APIKEY", apikey),
+                               ("WHATSAPP_PHONE", telefone)] if not v]
+    if faltando:
+        raise RuntimeError("Secret não configurado: " + ", ".join(faltando)
+                           + " (Settings → Secrets and variables → Actions)")
 
     espera = INTERVALO_ENTRE_ENVIOS_S - (time.monotonic() - _ultimo_envio)
     if espera > 0:
