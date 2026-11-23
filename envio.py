@@ -17,7 +17,7 @@ INTERVALO_ENTRE_ENVIOS_S = 5   # no saturar el bot gratuito con mensajes seguido
 _ultimo_envio = 0.0
 
 
-def resposta_sanitizada(html, *segredos):
+def resposta_sanitizada(html, *segredos, limite=400):
     """Texto de la respuesta, legible y SIN datos sensibles (el log es público).
 
     1. Quita etiquetas HTML y espacios de más.
@@ -31,7 +31,7 @@ def resposta_sanitizada(html, *segredos):
         if segredo:
             texto = texto.replace(segredo, "***").replace(segredo.lstrip("+"), "***")
     texto = re.sub(r"\d{6,}", "***", texto)
-    return texto[:400]
+    return texto if limite is None else texto[:limite]
 
 
 def enviar(texto, modo_teste=False):
@@ -71,10 +71,17 @@ def enviar(texto, modo_teste=False):
         # Actions también lo son. "from None" corta la cadena del error original.
         raise RuntimeError(f"Falha ao enviar WhatsApp ({type(erro).__name__})") from None
 
-    # CallMeBot a veces responde 200 aunque haya un error: revisamos el texto,
-    # pero sin imprimirlo (podría contener tu número).
-    if "error" in r.text.lower() or "invalid" in r.text.lower():
-        print("Resposta do CallMeBot (sanitizada):", resposta_sanitizada(r.text, apikey, telefone))
+    # CallMeBot responde 200 incluso cuando rechaza: hay que leer la página.
+    # La página de éxito repite TU mensaje ("Text to send: ..."), así que lo
+    # sacamos antes de buscar palabras de error (evita falsos positivos).
+    pagina = resposta_sanitizada(r.text, apikey, telefone, limite=None)
+    eco = resposta_sanitizada(texto, limite=None)
+    for variante in (eco, eco.replace(" ", "%0A")):
+        pagina = pagina.replace(variante, "[mensagem]")
+    achado = re.search(r"error|invalid", pagina, flags=re.I)
+    if achado:
+        trecho = pagina[max(0, achado.start() - 150): achado.end() + 150]
+        print("Resposta do CallMeBot (trecho sanitizado):", trecho)
         raise RuntimeError("CallMeBot recusou a mensagem (verifique apikey e telefone)")
 
     _ultimo_envio = time.monotonic()
