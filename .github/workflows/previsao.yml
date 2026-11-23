@@ -1,21 +1,40 @@
-# Paso 4 — Ejecuta el agente en la nube de GitHub.
-# Por ahora SOLO manualmente (botón "Run workflow" en la pestaña Actions)
-# para validar los datos reales antes de activar el horario y el WhatsApp.
+# Ejecuta el agente en la nube de GitHub.
+#  - 20h00 Bahia → reporte de la noche
+#  - 04h30 Bahia → confirmación de la madrugada (solo si cambió algo)
+#  - Manual (Run workflow) → elegís el modo; por defecto en MODO TESTE (no envía)
+#
+# ⚠️ El cron está en UTC y GitHub puede atrasarlo varios minutos en horas pico.
 name: Previsão de surf
 
 on:
-  workflow_dispatch:        # ejecución manual desde la web
-  # schedule:               # se activa en el paso 3 (cron en UTC: 08:00 UTC = 05h Bahia)
-  #   - cron: "0 23 * * *"
+  schedule:
+    - cron: "0 23 * * *"    # 23:00 UTC = 20h00 Bahia (UTC-3)
+    - cron: "30 7 * * *"    # 07:30 UTC = 04h30 Bahia
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "Modo de execução"
+        type: choice
+        options: [noite, madrugada, console]
+        default: noite
+      teste:
+        description: "Modo teste: mostra as mensagens sem enviar"
+        type: boolean
+        default: true
 
-# Mínimo privilegio: este workflow solo necesita LEER el repo.
+# Escritura: el workflow hace commit de estado.json (memoria entre ejecuciones).
 permissions:
-  contents: read
+  contents: write
+
+# Nunca dos ejecuciones a la vez: las dos querrían escribir estado.json.
+concurrency:
+  group: previsao
+  cancel-in-progress: false
 
 jobs:
   previsao:
     runs-on: ubuntu-latest
-    timeout-minutes: 5      # si algo se cuelga, no gasta tus minutos gratis
+    timeout-minutes: 5
 
     steps:
       - name: Baixar o código
@@ -25,15 +44,39 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip          # reaprovecha dependencias entre ejecuciones
+          cache: pip
 
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
-      # Primero la lógica con datos simulados: si esto falla,
-      # el problema es el código, no la API.
       - name: Testes com dados simulados
         run: python teste_simulado.py
 
-      - name: Previsão real (Open-Meteo)
-        run: python main.py
+      # Los valores de GitHub entran como variables de entorno y no pegados
+      # dentro del script: es la práctica recomendada contra inyección de comandos.
+      - name: Rodar o agente
+        env:
+          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          EVENTO: ${{ github.event_name }}
+          AGENDA: ${{ github.event.schedule }}
+          MODO_MANUAL: ${{ inputs.modo }}
+          TESTE_MANUAL: ${{ inputs.teste }}
+        run: |
+          if [ "$EVENTO" = "schedule" ]; then
+            if [ "$AGENDA" = "30 7 * * *" ]; then MODO=madrugada; else MODO=noite; fi
+            python main.py "$MODO"
+          elif [ "$TESTE_MANUAL" = "true" ]; then
+            python main.py "$MODO_MANUAL" --teste
+          else
+            python main.py "$MODO_MANUAL"
+          fi
+
+      - name: Salvar estado
+        run: |
+          if [ -f estado.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add estado.json
+            git diff --cached --quiet || { git commit -m "chore: atualizar estado do agente"; git push; }
+          fi

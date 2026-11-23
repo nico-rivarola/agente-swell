@@ -35,7 +35,8 @@ As marés (preamar/baixa-mar) são estimadas ao minuto por interpolação parab�
 ```bash
 pip install -r requirements.txt
 python teste_simulado.py   # testa a lógica com dados simulados (sem internet)
-python main.py             # previsão real dos próximos 3 dias
+python main.py             # ranking real no terminal
+python main.py noite --teste   # mostra o relatório da noite sem enviar
 ```
 
 ## Estrutura
@@ -46,16 +47,19 @@ python main.py             # previsão real dos próximos 3 dias
 | `coleta.py` | Chamadas HTTP às APIs → registros por hora |
 | `mare.py` | Posição, tendência e horários de maré |
 | `nota.py` | Subnotas, média ponderada e veto |
-| `main.py` | Orquestra tudo e imprime o ranking |
+| `relatorio.py` | Monta as mensagens de WhatsApp (pt-BR) |
+| `envio.py` | Envio pelo CallMeBot (modo teste sem credenciais) |
+| `estado.py` | Memória entre execuções (`estado.json`) |
+| `main.py` | Orquestra tudo: `console`, `noite` e `madrugada` |
 | `teste_simulado.py` | Mock da API + testes de casos conhecidos |
 
 ## Roadmap
 
 - [x] Coleta de dados (Open-Meteo)
 - [x] Nota 0–10, maré e ranking por dia
-- [ ] Mensagem amigável + envio por WhatsApp (CallMeBot)
-- [ ] Execução diária com GitHub Actions + Secrets
-- [ ] Alerta especial sem repetição (nota ≥ 8)
+- [x] Mensagem amigável + envio por WhatsApp (CallMeBot)
+- [x] Execução diária com GitHub Actions + Secrets (20h00 e 04h30)
+- [x] Alerta especial sem repetição (nota ≥ 8) com `estado.json`
 - [ ] Migração para WhatsApp Cloud API (Meta)
 - [ ] Histórico em SQLite + dashboard de calibração
 - [ ] pytest, CI e logging

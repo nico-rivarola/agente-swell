@@ -16,6 +16,7 @@ si el punto cae en tierra, la API marina devuelve null.
 PRAIAS = {
     "jaguaribe": {
         "nome": "Jaguaribe",
+        "regiao": "salvador",   # define qué tabla de marea se muestra
         "lat": -12.955, "lon": -38.400,
         "swell_ideal": ["E", "SE", "S"],
         "vento_ideal": ["NO"],
@@ -25,6 +26,7 @@ PRAIAS = {
     },
     "piata": {
         "nome": "Piatã",
+        "regiao": "salvador",   # define qué tabla de marea se muestra
         "lat": -12.957, "lon": -38.380,
         "swell_ideal": ["E", "SE", "S"],
         "vento_ideal": ["NO"],
@@ -36,6 +38,7 @@ PRAIAS = {
     },
     "stella_maris": {
         "nome": "Stella Maris",
+        "regiao": "salvador",   # define qué tabla de marea se muestra
         "lat": -12.945, "lon": -38.330,
         "swell_ideal": ["S", "SE"],
         "vento_ideal": ["ONO", "NO"],
@@ -45,6 +48,7 @@ PRAIAS = {
     },
     "itacimirim": {
         "nome": "Itacimirim",
+        "regiao": "linha_verde",   # define qué tabla de marea se muestra
         "lat": -12.630, "lon": -38.035,
         "swell_ideal": ["S", "SE", "E"],
         "vento_ideal": ["ONO", "NO"],
@@ -54,6 +58,7 @@ PRAIAS = {
     },
     "guarajuba": {
         "nome": "Guarajuba",
+        "regiao": "linha_verde",   # define qué tabla de marea se muestra
         "lat": -12.655, "lon": -38.058,
         "swell_ideal": ["S", "SE", "E"],
         "vento_ideal": ["ONO", "NO"],
@@ -65,7 +70,7 @@ PRAIAS = {
 
 # ---------------- Reglas generales ----------------
 JANELA_HORAS = [5, 6, 7]       # tu horario preferido
-DIAS_PREVISAO = 3              # hoy + 2 días
+DIAS_PREVISAO = 4              # hoy + 3: a las 20h hace falta mañana + 2 días
 
 PERIODO_BOM_S = 8              # "a partir de 8 s ya es bueno"
 TAMANHO_IDEAL_M = (1.0, 1.5)   # tu rango preferido de swell
@@ -88,3 +93,7 @@ VENTO_ESPELHO_KN = 5
 # Techo de la nota según el período: (período por debajo de X s, nota máxima).
 # Con menos de 6 s es mar de viento: "sirve para entrenar", máximo 6.
 TETOS_PERIODO = [(6, 6.0)]
+
+# Mensajes (paso 3)
+NOTA_MINIMA_BOA = 5.0   # por debajo: mensaje corto "sem ondas boas"
+MUDANCA_NOTA = 1.5      # la confirmación de la madrugada sale si la nota cambia esto o más

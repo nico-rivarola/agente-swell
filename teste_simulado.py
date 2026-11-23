@@ -71,4 +71,60 @@ def api_falsa(lat, lon):
     return regs
 
 coleta.buscar_dados = api_falsa
-main.main()
+main.main(["console"])
+
+
+# ---- 3. Mensajes y estado (paso 3), sin enviar nada ----
+import tempfile
+from datetime import date
+from pathlib import Path
+
+import envio
+import estado as est
+import relatorio
+
+assert relatorio.num(1.25) == "1,2" or relatorio.num(1.25) == "1,3"   # coma decimal
+assert relatorio.num(10, 0) == "10"
+assert relatorio.hora(datetime(2026, 11, 19, 5, 0)) == "05h"
+assert relatorio.hora(datetime(2026, 11, 19, 12, 36)) == "12h36"
+
+# Estado en un archivo temporal: la prueba nunca toca el estado.json real
+est.ARQUIVO = Path(tempfile.mkdtemp()) / "estado.json"
+
+# Capturamos los envíos en vez de imprimirlos/enviarlos
+enviados = []
+envio.enviar = lambda texto, modo_teste=False: enviados.append(texto) or False
+
+# Noche del 18/11: reporte de 19/11 + 20 y 21, y alertas (los datos falsos son buenos)
+main.main(["noite", "--hoje", "2026-11-18"])
+assert enviados[0].startswith("🌊 *Previsão de surf — quinta, 19/11*")
+assert "🥇" in enviados[0] and "📅 *Próximos dias*" in enviados[0]
+assert "." not in enviados[0].split("nota ")[1][:3], "nota con coma decimal"
+n_alertas = sum("ALERTA DE SWELL" in t for t in enviados)
+assert n_alertas >= 1
+
+# Segunda corrida igual: las alertas NO se repiten
+enviados.clear()
+main.main(["noite", "--hoje", "2026-11-18"])
+assert sum("ALERTA DE SWELL" in t for t in enviados) == 0, "alerta repetida"
+
+# Madrugada del 19/11 con la misma previsión: no manda confirmación
+enviados.clear()
+main.main(["madrugada", "--hoje", "2026-11-19"])
+assert not any("Atualização" in t for t in enviados)
+
+# Si la nota de la noche era muy distinta, la madrugada sí avisa
+e = est.carregar()
+e["ultimo_relatorio"]["nota"] -= 3
+est.salvar(e, date(2026, 11, 19))
+main.main(["madrugada", "--hoje", "2026-11-19"])
+assert any("Atualização" in t for t in enviados), "confirmación esperada"
+
+# Modo --teste no guarda estado
+est.ARQUIVO.unlink()
+enviados.clear()
+main.main(["noite", "--teste", "--hoje", "2026-11-18"])
+assert not est.ARQUIVO.exists(), "--teste não deve salvar estado"
+
+print("✅ Pruebas de mensajes y estado OK")
+print("\n--- Exemplo: relatório da noite ---\n" + enviados[0])
