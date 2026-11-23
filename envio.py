@@ -6,6 +6,7 @@ Credenciales: vienen de variables de entorno (GitHub Secrets), nunca del código
 Con --teste el mensaje se imprime en vez de enviarse; sin credenciales, falla.
 """
 import os
+import re
 import time
 
 import requests
@@ -14,6 +15,23 @@ URL_CALLMEBOT = "https://api.callmebot.com/whatsapp.php"
 INTERVALO_ENTRE_ENVIOS_S = 5   # no saturar el bot gratuito con mensajes seguidos
 
 _ultimo_envio = 0.0
+
+
+def resposta_sanitizada(html, *segredos):
+    """Texto de la respuesta, legible y SIN datos sensibles (el log es público).
+
+    1. Quita etiquetas HTML y espacios de más.
+    2. Borra los secretos literales (apikey, teléfono).
+    3. Por las dudas, tapa cualquier secuencia de 6+ dígitos (otro formato del número).
+    """
+    texto = re.sub(r"<script.*?</script>|<style.*?</style>", " ", html, flags=re.S | re.I)
+    texto = re.sub(r"<[^>]+>", " ", texto)
+    texto = re.sub(r"\s+", " ", texto).strip()
+    for segredo in segredos:
+        if segredo:
+            texto = texto.replace(segredo, "***").replace(segredo.lstrip("+"), "***")
+    texto = re.sub(r"\d{6,}", "***", texto)
+    return texto[:400]
 
 
 def enviar(texto, modo_teste=False):
@@ -56,6 +74,7 @@ def enviar(texto, modo_teste=False):
     # CallMeBot a veces responde 200 aunque haya un error: revisamos el texto,
     # pero sin imprimirlo (podría contener tu número).
     if "error" in r.text.lower() or "invalid" in r.text.lower():
+        print("Resposta do CallMeBot (sanitizada):", resposta_sanitizada(r.text, apikey, telefone))
         raise RuntimeError("CallMeBot recusou a mensagem (verifique apikey e telefone)")
 
     _ultimo_envio = time.monotonic()
