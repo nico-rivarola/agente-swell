@@ -81,3 +81,10 @@ PESOS = {
 }
 
 NOTA_ALERTA = 8.0   # desde esta nota se manda el "alerta especial"
+
+# Calibración 23/11/2026 (ver CALIBRACAO.md)
+# Con menos de 5 kn el mar queda espejo: la dirección del viento no importa.
+VENTO_ESPELHO_KN = 5
+# Techo de la nota según el período: (período por debajo de X s, nota máxima).
+# Con menos de 6 s es mar de viento: "sirve para entrenar", máximo 6.
+TETOS_PERIODO = [(6, 6.0)]

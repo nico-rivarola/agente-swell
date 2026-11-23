@@ -32,6 +32,20 @@ maral_forte = {**dia_perfeito, "vento_vel": 14, "vento_direcao": 120}
 n_jag = calcular_nota(maral_forte, jag)["nota"]
 n_pia = calcular_nota(maral_forte, PRAIAS["piata"])["nota"]
 assert n_pia > n_jag, "Piatã tiene que salir mejor con viento SE"
+# Calibración 23/11: caso real del 19/11 (1 m E 5 s) → máximo 6
+mar_de_vento = {**dia_perfeito, "swell_direcao": 90, "swell_periodo": 5}
+assert calcular_nota(mar_de_vento, jag)["nota"] <= 6.0, "teto por período"
+
+# Viento < 5 kn: espejo, aunque sea maral
+espelho = {**dia_perfeito, "vento_vel": 3, "vento_direcao": 135}
+res = calcular_nota(espelho, jag)
+assert res["tipo_vento"] == "espelho" and res["subnotas"]["vento"] == 1.0
+
+# Reglas confirmadas por Nicolás (no cambian el código, quedan protegidas)
+assert tipo_vento(0, ["NO"]) == "terral"            # N en Salvador
+assert tipo_vento(22.5, ["NO"]) == "lateral"        # NNE en Salvador
+assert tipo_vento(45, ["ONO", "NO"]) == "lateral"   # NE en Linha Verde
+
 print(f"✅ Pruebas unitarias OK  (SE 14 kn → Jaguaribe {n_jag} · Piatã {n_pia})")
 
 

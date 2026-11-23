@@ -9,7 +9,8 @@ Por eso hay un "veto": si tamaño, dirección o viento dan 0, la nota queda
 limitada a 3, porque cualquiera de esos tres solo ya arruina la sesión.
 """
 from mare import classificar_mare
-from praias import PERIODO_BOM_S, TAMANHO_IDEAL_M, PESOS
+from praias import (PERIODO_BOM_S, TAMANHO_IDEAL_M, PESOS,
+                    VENTO_ESPELHO_KN, TETOS_PERIODO)
 
 PONTOS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
           "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"]
@@ -78,6 +79,10 @@ def tipo_vento(graus, vento_ideal):
 
 
 def nota_vento(vel, graus, praia, periodo):
+    # Viento muy flojo: mar espejo, sin importar de dónde sopla (regla de Nicolás)
+    if vel < VENTO_ESPELHO_KN:
+        return 1.0, "espelho"
+
     tipo = tipo_vento(graus, praia["vento_ideal"])
 
     if tipo == "terral":
@@ -164,6 +169,11 @@ def calcular_nota(r, praia):
     nota = 10 * sum(PESOS[k] * v for k, v in sub.items())
     if min(sub["tamanho"], sub["direcao"], sub["vento"]) == 0:
         nota = min(nota, 3.0)
+    # Techo por período corto: el promedio solo no alcanza para castigar
+    # el mar de viento (el período pesa 15 %).
+    for limite_s, teto in TETOS_PERIODO:
+        if r["swell_periodo"] < limite_s:
+            nota = min(nota, teto)
 
     return {
         "nota": round(nota, 1),
