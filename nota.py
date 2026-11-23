@@ -167,6 +167,7 @@ def calcular_nota(r, praia):
         "mare": s_mare,
     }
     nota = 10 * sum(PESOS[k] * v for k, v in sub.items())
+    nota_bruta = nota   # antes de vetos y techos: sirve para desempatar
     if min(sub["tamanho"], sub["direcao"], sub["vento"]) == 0:
         nota = min(nota, 3.0)
     # Techo por período corto: el promedio solo no alcanza para castigar
@@ -177,6 +178,7 @@ def calcular_nota(r, praia):
 
     return {
         "nota": round(nota, 1),
+        "nota_bruta": round(nota_bruta, 2),
         "subnotas": sub,
         "tipo_vento": tipo,
         "classe_mare": classe_mare,

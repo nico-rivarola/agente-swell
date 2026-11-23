@@ -32,7 +32,9 @@ def data_curta(dia):
 def descrever_swell(item):
     r = item["registro"]
     return (f"Swell {num(r['swell_altura'])} m de {graus_para_cardinal(r['swell_direcao'])}"
-            f" · período {num(r['swell_periodo'], 0)} s")
+            f" · período {int(r['swell_periodo'])} s")
+    # int() trunca (5,8 → 5) en vez de redondear (5,8 → 6): así el número
+    # mostrado es coherente con la regla "menos de 6 s = mar de viento".
 
 
 def descrever_vento(item):

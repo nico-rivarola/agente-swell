@@ -59,7 +59,9 @@ def calcular_previsao():
             por_dia[dia].append(item)
         mares.setdefault(praia["regiao"], extremos)
     for ranking in por_dia.values():
-        ranking.sort(key=lambda x: x["nota"], reverse=True)
+        # Desempate: si varios picos quedan en el techo (ej. 6,0 por período
+        # corto), gana el que tenía mejores condiciones antes del techo.
+        ranking.sort(key=lambda x: (x["nota"], x["nota_bruta"]), reverse=True)
     return dict(por_dia), mares
 
 

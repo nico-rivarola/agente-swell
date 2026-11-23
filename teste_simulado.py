@@ -126,5 +126,14 @@ enviados.clear()
 main.main(["noite", "--teste", "--hoje", "2026-11-18"])
 assert not est.ARQUIVO.exists(), "--teste não deve salvar estado"
 
+# Caso real 23/11: período 5,8 s se mostraba como "6 s" aunque aplicaba el techo
+item_58 = {"registro": {**dia_perfeito, "swell_periodo": 5.8}}
+assert "período 5 s" in relatorio.descrever_swell(item_58)
+
+# Desempate por nota_bruta cuando todos quedan en el techo
+a = calcular_nota({**mar_de_vento, "vento_vel": 12, "vento_direcao": 135}, jag)
+b = calcular_nota(mar_de_vento, jag)
+assert a["nota"] == b["nota"] == 6.0 and b["nota_bruta"] > a["nota_bruta"]
+
 print("✅ Pruebas de mensajes y estado OK")
 print("\n--- Exemplo: relatório da noite ---\n" + enviados[0])
