@@ -5,6 +5,7 @@ vive acá: para cambiar de canal se toca SOLO este archivo.
 Credenciales: vienen de variables de entorno (GitHub Secrets), nunca del código.
 Con --teste el mensaje se imprime en vez de enviarse; sin credenciales, falla.
 """
+import logging
 import os
 import re
 import time
@@ -15,6 +16,8 @@ URL_CALLMEBOT = "https://api.callmebot.com/whatsapp.php"
 INTERVALO_ENTRE_ENVIOS_S = 5   # no saturar el bot gratuito con mensajes seguidos
 
 _ultimo_envio = 0.0
+
+log = logging.getLogger(__name__)
 
 
 def resposta_sanitizada(html, *segredos, limite=400):
@@ -41,7 +44,8 @@ def enviar(texto, modo_teste=False):
     telefone = os.environ.get("WHATSAPP_PHONE")
 
     if modo_teste:
-        print("📝 MODO TESTE — mensagem NÃO enviada:")
+        log.info("MODO TESTE — mensagem NÃO enviada (%d caracteres)", len(texto))
+        # El mensaje en sí es la SALIDA del modo teste: va a stdout con print.
         print(texto)
         print("-" * 40)
         return False
@@ -81,9 +85,9 @@ def enviar(texto, modo_teste=False):
     achado = re.search(r"error|invalid", pagina, flags=re.I)
     if achado:
         trecho = pagina[max(0, achado.start() - 150): achado.end() + 150]
-        print("Resposta do CallMeBot (trecho sanitizado):", trecho)
+        log.warning("Resposta do CallMeBot (trecho sanitizado): %s", trecho)
         raise RuntimeError("CallMeBot recusou a mensagem (verifique apikey e telefone)")
 
     _ultimo_envio = time.monotonic()
-    print("✅ WhatsApp enviado")
+    log.info("WhatsApp enviado (%d caracteres)", len(texto))
     return True

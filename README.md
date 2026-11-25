@@ -37,6 +37,7 @@ pip install -r requirements-dev.txt
 pytest                     # testa a lógica com dados simulados (sem internet)
 python main.py             # ranking real no terminal
 python main.py noite --teste   # mostra o relatório da noite sem enviar
+python main.py noite --teste --verbose   # + logs de depuração (DEBUG)
 ```
 
 ## Estrutura
@@ -63,7 +64,7 @@ python main.py noite --teste   # mostra o relatório da noite sem enviar
 - [ ] Migração para WhatsApp Cloud API (Meta)
 - [ ] Histórico em SQLite + dashboard de calibração
 - [x] pytest + CI (testes a cada push)
-- [ ] logging
+- [x] logging (stderr, hora de Bahia; `--verbose` ou `LOG_LEVEL=DEBUG`)
 
 ## Limitações
 

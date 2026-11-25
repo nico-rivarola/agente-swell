@@ -6,6 +6,7 @@ Coleta: llama a las 2 APIs de Open-Meteo y devuelve una lista de "registros"
 "columnar" (una lista por variable). Para puntuar es mucho más cómodo tener
 una fila por hora, como en una planilla.
 """
+import logging
 from datetime import datetime
 
 import requests
@@ -15,6 +16,8 @@ from praias import DIAS_PREVISAO
 URL_MARINE = "https://marine-api.open-meteo.com/v1/marine"
 URL_TEMPO = "https://api.open-meteo.com/v1/forecast"
 TIMEZONE = "America/Bahia"  # Salvador no tiene horario de verano: UTC-3 fijo
+
+log = logging.getLogger(__name__)
 
 
 def buscar_dados(lat, lon):
@@ -69,4 +72,5 @@ def buscar_dados(lat, lon):
             "vento_direcao": dire,
             "vento_rajada": raj,
         })
+    log.debug("Open-Meteo (%s, %s): %d horas", lat, lon, len(registros))
     return registros

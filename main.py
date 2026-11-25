@@ -8,8 +8,15 @@ Modos:
 
 --teste  → muestra los mensajes sin enviarlos y NO guarda el estado.
 --hoje AAAA-MM-DD → simula otra fecha (útil para pruebas).
+--verbose → logs de nivel DEBUG (o variable de entorno LOG_LEVEL=DEBUG).
+
+Salida vs. logs: lo que el agente PRODUCE (ranking, mensajes en modo teste)
+va a stdout con print; lo que CUENTA de sí mismo (qué hizo, qué falló) va a
+stderr con logging, con hora y nivel.
 """
 import argparse
+import logging
+import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -27,6 +34,29 @@ from praias import PRAIAS, JANELA_HORAS, NOTA_ALERTA
 # El runner de GitHub está en UTC: "hoy" tiene que calcularse en hora de Bahia,
 # si no, a las 22h de Salvador (01h UTC) el agente pensaría que ya es mañana.
 FUSO = ZoneInfo("America/Bahia")
+
+# Logger con nombre fijo: si usáramos __name__, al correr `python main.py`
+# aparecería como "__main__" en los logs.
+log = logging.getLogger("main")
+
+
+def configurar_logging(nivel="INFO"):
+    """Se configura UNA sola vez, en el punto de entrada (nunca en los módulos).
+
+    Los módulos solo hacen `logging.getLogger(__name__)` y emiten mensajes;
+    quién los muestra, dónde y con qué formato lo decide main.py.
+    """
+    formato = logging.Formatter("%(asctime)s %(levelname)-7s %(name)-8s %(message)s",
+                                datefmt="%d/%m %H:%M:%S")
+    # Hora de Bahia en el log aunque el runner de GitHub esté en UTC.
+    formato.converter = lambda ts: datetime.fromtimestamp(ts, FUSO).timetuple()
+    saida = logging.StreamHandler()   # stderr: no se mezcla con la salida
+    saida.setFormatter(formato)
+    logging.basicConfig(level=nivel, handlers=[saida])
+    # ⚠️ SEGURIDAD: en DEBUG, urllib3 (lo usa requests por dentro) loguea la
+    # URL de cada request, y la de CallMeBot lleva apikey y teléfono.
+    # Los logs de Actions son públicos → urllib3 nunca baja de WARNING.
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def avaliar_praia(praia):
@@ -53,8 +83,10 @@ def calcular_previsao():
         try:
             melhores, extremos = avaliar_praia(praia)
         except requests.RequestException as erro:
-            print(f"❌ {praia['nome']}: erro ao buscar dados → {erro}")
+            # WARNING y no ERROR: un pico sin datos no impide reportar los demás.
+            log.warning("%s: erro ao buscar dados → %s", praia["nome"], erro)
             continue
+        log.debug("%s: %d dias avaliados", praia["nome"], len(melhores))
         for dia, item in melhores.items():
             por_dia[dia].append(item)
         mares.setdefault(praia["regiao"], extremos)
@@ -62,6 +94,8 @@ def calcular_previsao():
         # Desempate: si varios picos quedan en el techo (ej. 6,0 por período
         # corto), gana el que tenía mejores condiciones antes del techo.
         ranking.sort(key=lambda x: (x["nota"], x["nota_bruta"]), reverse=True)
+    if not por_dia:
+        log.error("Nenhum pico retornou dados")
     return dict(por_dia), mares
 
 
@@ -95,7 +129,8 @@ def enviar_alertas(por_dia, estado, desde, teste):
 def modo_noite(por_dia, mares, estado, hoje, teste):
     amanha = hoje + timedelta(days=1)
     if amanha not in por_dia:
-        raise SystemExit("❌ Sem dados para amanhã — nada enviado.")
+        log.error("Sem dados para amanhã (%s) — nada enviado", amanha)
+        raise SystemExit(1)
     dias = [amanha + timedelta(days=i) for i in range(3)]
     envio.enviar(relatorio.relatorio_noite(por_dia, mares, dias), modo_teste=teste)
     est.registrar_relatorio(estado, amanha, por_dia[amanha][0])
@@ -104,13 +139,15 @@ def modo_noite(por_dia, mares, estado, hoje, teste):
 
 def modo_madrugada(por_dia, mares, estado, hoje, teste):
     if hoje not in por_dia:
-        raise SystemExit("❌ Sem dados para hoje — nada enviado.")
+        log.error("Sem dados para hoje (%s) — nada enviado", hoje)
+        raise SystemExit(1)
     melhor = por_dia[hoje][0]
     if est.mudou(estado, hoje, melhor):
         anterior = estado.get("ultimo_relatorio")
         envio.enviar(relatorio.confirmacao(melhor, hoje, mares, anterior), modo_teste=teste)
     else:
-        print("✔️ Previsão igual à da noite: nenhuma confirmação enviada.")
+        log.info("Previsão igual à da noite (%s %s): nenhuma confirmação enviada",
+                 melhor["praia"], melhor["nota"])
     est.registrar_relatorio(estado, hoje, melhor)
     enviar_alertas(por_dia, estado, desde=hoje, teste=teste)
 
@@ -123,9 +160,13 @@ def main(argv=None):
                         help="mostra as mensagens sem enviar e não salva o estado")
     parser.add_argument("--hoje", type=date.fromisoformat,
                         help="simula outra data (AAAA-MM-DD)")
+    parser.add_argument("--verbose", action="store_true", help="logs de nível DEBUG")
     args = parser.parse_args(argv)
 
+    configurar_logging("DEBUG" if args.verbose else os.environ.get("LOG_LEVEL", "INFO"))
     hoje = args.hoje or datetime.now(FUSO).date()
+    log.info("Modo %s · hoje %s%s", args.modo, hoje.strftime("%d/%m/%Y"),
+             " · TESTE (nada é enviado nem salvo)" if args.teste else "")
     por_dia, mares = calcular_previsao()
 
     if args.modo == "console":
