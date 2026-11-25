@@ -47,10 +47,10 @@ jobs:
           cache: pip
 
       - name: Instalar dependências
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Testes com dados simulados
-        run: python teste_simulado.py
+        run: pytest -q
 
       # Los valores de GitHub entran como variables de entorno y no pegados
       # dentro del script: es la práctica recomendada contra inyección de comandos.

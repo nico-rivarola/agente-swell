@@ -33,8 +33,8 @@ As marés (preamar/baixa-mar) são estimadas ao minuto por interpolação parab�
 ## Como rodar
 
 ```bash
-pip install -r requirements.txt
-python teste_simulado.py   # testa a lógica com dados simulados (sem internet)
+pip install -r requirements-dev.txt
+pytest                     # testa a lógica com dados simulados (sem internet)
 python main.py             # ranking real no terminal
 python main.py noite --teste   # mostra o relatório da noite sem enviar
 ```
@@ -51,7 +51,7 @@ python main.py noite --teste   # mostra o relatório da noite sem enviar
 | `envio.py` | Envio pelo CallMeBot (modo teste sem credenciais) |
 | `estado.py` | Memória entre execuções (`estado.json`) |
 | `main.py` | Orquestra tudo: `console`, `noite` e `madrugada` |
-| `teste_simulado.py` | Mock da API + testes de casos conhecidos |
+| `tests/` | Testes pytest: mock da API + casos conhecidos e calibrações |
 
 ## Roadmap
 
@@ -62,7 +62,8 @@ python main.py noite --teste   # mostra o relatório da noite sem enviar
 - [x] Alerta especial sem repetição (nota ≥ 8) com `estado.json`
 - [ ] Migração para WhatsApp Cloud API (Meta)
 - [ ] Histórico em SQLite + dashboard de calibração
-- [ ] pytest, CI e logging
+- [x] pytest + CI (testes a cada push)
+- [ ] logging
 
 ## Limitações
 
